@@ -49,28 +49,18 @@ void main(void)
 
 		vec3 cc;
 		float factor;
-		float bZ = 1.0/normpdf(0.0, BSIGMA);
-		//read out the texels
-		for (int j=-kSize; j <= kSize; ++j)
-		{
-			cc = texture2D(bfSampler0, vec2(0.0, 0.0) + TexCoord0 + vec2(float(0),float(j)) / sketchSize.xy ).rgb;
-			factor = normpdf3(cc-c, BSIGMA)*kernel[kSize+j];	//Nicer one
-			//factor = (0.18 + j*0.03) * (1.0 - min(distance(cc, c), 1.0));		//Efficient one
-			Z += factor;
-			final_colour += factor*cc;
-
-		}
-
 		for (int i=-kSize; i <= kSize; ++i)
 		{
-			cc = texture2D(bfSampler0, vec2(0.0, 0.0) + TexCoord0 + vec2(float(i),float(0)) / sketchSize.xy ).rgb;
-			factor = normpdf3(cc-c, BSIGMA)*kernel[kSize+i];	//Nicer one
-			//factor = (0.18 + i*0.03) * (1.0 - min(distance(cc, c), 1.0));		//Efficient one
-			Z += factor;
-			final_colour += factor*cc;
-
+			for (int j=-kSize; j <= kSize; ++j)
+			{
+				cc = texture2D(bfSampler0, vec2(0.0, 0.0) + TexCoord0 + vec2(float(i),float(j)) / sketchSize.xy ).rgb;
+				factor = normpdf3(cc-c, BSIGMA) * kernel[kSize+i] * kernel[kSize+j];;	//Nicer one
+				//factor = (0.18 + i*0.03) * (0.18 + i*0.03) * (1.0 - min(distance(cc, c), 1.0));		//Efficient one
+				Z += factor;
+				final_colour += factor*cc;
+			}
 		}
-		
+
 		final_colour = final_colour/Z;
 		c = mix(c, final_colour, smoother);
 	}

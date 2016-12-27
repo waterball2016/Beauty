@@ -45,8 +45,10 @@ GLuint FBO;
 GLuint bfShaderProgram;
 GLuint edgeShaderProgram;
 GLuint nmsShaderProgram;
+GLuint sharpShaderProgram;
 GLuint edgeSampler;
 GLuint nmsSampler;
+GLuint sharpSampler;
 GLuint bfSampler0;
 GLuint bfSampler1;
 Texture* pTexture = NULL;
@@ -57,9 +59,10 @@ GLuint sketchSize;
 GLfloat out[OUT_SIZE];
 
 const char* pVsFileName = "../Shader/shader.vs";
-const char* pBfFileName = "../Shader/bfilter.fs";
-const char* pNmsFileName = "../Shader/nms.fs";
 const char* pEdgeFileName = "../Shader/edge.fs";
+const char* pNmsFileName = "../Shader/nms.fs";
+const char* pSharpFileName = "../Shader/sharp.fs";
+const char* pBfFileName = "../Shader/bfilter.fs";
 
 bool ReadFile(const char* pFileName, string& outFile)
 {
@@ -87,7 +90,7 @@ bool ReadFile(const char* pFileName, string& outFile)
 
 static void Save()
 {
-	glReadPixels((WIDTH-size[0])/2,(HEIGHT-size[1])/2, size[0], size[1], GL_RGBA, GL_FLOAT, out); 	
+	glReadPixels(0, 0, size[0], size[1], GL_RGBA, GL_FLOAT, out); 	
 	
 	Magick::Image m = Magick::Image(size[0], size[1], "RGBA", MagickCore::FloatPixel, out);
 	m.flip();
@@ -103,7 +106,7 @@ static void RenderSceneCB()
 	gluOrtho2D(0,size[0],0,size[1]);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	glViewport((WIDTH-size[0])/2,(HEIGHT-size[1])/2,size[0],size[1]);
+	glViewport(0,0,size[0],size[1]);
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -134,8 +137,16 @@ static void RenderSceneCB()
 	glUniform1i(bfSampler0, 0);
 	glUniform1i(bfSampler1, 1);
 	glUniform2fv(sketchSize, 1, size);
+	glBindFramebuffer(GL_FRAMEBUFFER, FBO);
+	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+	// Sharp Filter
+	glUseProgram(sharpShaderProgram);
+	glUniform1i(sharpSampler, 1);
+	glUniform2fv(sketchSize, 1, size);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
 
 	glDisableVertexAttribArray(0);
 	glDisableVertexAttribArray(1);
@@ -278,6 +289,13 @@ static void InitShaders()
 	sketchSize = glGetUniformLocation(nmsShaderProgram, "sketchSize");
 	assert(nmsSampler != 0xFFFFFFFF);
 	assert(sketchSize != 0xFFFFFFFF);
+	
+	sharpShaderProgram = CompileShaders(pVsFileName, pSharpFileName);
+	sharpSampler = glGetUniformLocation(sharpShaderProgram, "sharpSampler");
+	sketchSize = glGetUniformLocation(sharpShaderProgram, "sketchSize");
+	assert(sharpSampler != 0xFFFFFFFF);
+	assert(sketchSize != 0xFFFFFFFF);
+
 }
 
 static bool InitTextures(const char *textureName)
